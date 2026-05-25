@@ -25,6 +25,7 @@ from homeassistant.config_entries import (
 )
 
 from .dreame import DreameMowerProtocol, MAP_COLOR_SCHEME_LIST, MAP_ICON_SET_LIST
+from .model_utils import is_supported_model, lookup_model_display_name
 
 from .const import (
     DOMAIN,
@@ -46,17 +47,9 @@ from .const import (
     NOTIFICATION_2FA_LOGIN,
 )
 
-DREAME_MODELS = [
-    "dreame.mower.",
-    "mova.mower.",
-]
-
-model_map = {
-    "dreame.mower.p2255": "A1",
-    "dreame.mower.g2422": "A1 Pro",
-    "dreame.mower.g2408": "A2",
-    "dreame.mower.g3255": "unknown",
-}
+# Supported model prefixes and friendly display names live in ``model_utils``
+# so they can be unit-tested without importing Home Assistant. The helpers
+# ``is_supported_model`` and ``lookup_model_display_name`` are imported above.
 
 DREAMEHOME: Final = "Dreamehome Account"
 MOVAHOME: Final = "Mova Account"
@@ -259,7 +252,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                         }
                     )
 
-                if any(self.model.startswith(prefix) for prefix in DREAME_MODELS):
+                if is_supported_model(self.model):
                     if self.name is None:
                         self.name = self.model
                     return await self.async_step_options()
@@ -354,10 +347,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                         found = list(
                             filter(
                                 lambda d: not d.get("parent_id")
-                                and any(
-                                    str(d["model"]).startswith(prefix)
-                                    for prefix in DREAME_MODELS
-                                ),
+                                and is_supported_model(str(d["model"])),
                                 devices,
                             )
                         )
@@ -443,10 +433,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                     if devices:
                         found = list(
                             filter(
-                                lambda d: any(
-                                    str(d["model"]).startswith(prefix)
-                                    for prefix in DREAME_MODELS
-                                ),
+                                lambda d: is_supported_model(str(d["model"])),
                                 devices["page"]["records"],
                             )
                         )
@@ -459,7 +446,10 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                                 and len(device["customName"]) > 0
                                 else device["deviceInfo"]["displayName"]
                             )
-                            model = model_map[device["model"]]
+                            # Fall back to the raw model string for vacuums or
+                            # newer SKUs that don't have a friendly display
+                            # name registered yet (previously raised KeyError).
+                            model = lookup_model_display_name(device["model"]) or device["model"]
                             modelId = device["model"]
                             list_name = f"{name} - {model} ({modelId})"
                             self.devices[list_name] = device
@@ -530,10 +520,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                     if devices:
                         found = list(
                             filter(
-                                lambda d: any(
-                                    str(d["model"]).startswith(prefix)
-                                    for prefix in DREAME_MODELS
-                                ),
+                                lambda d: is_supported_model(str(d["model"])),
                                 devices["page"]["records"],
                             )
                         )

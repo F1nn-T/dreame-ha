@@ -1,0 +1,4 @@
+# Test-only dependencies. Kept minimal on purpose: the test suite avoids any
+# Home Assistant imports so we don't have to pull in the entire HA dependency
+# tree (hundreds of MB) to run unit tests.
+pytest>=8.0

@@ -550,6 +550,22 @@ Rather than a fixed entity list, every entity descriptor carries `exists_fn` and
 | 5 | **Camera entities require cloud.** Live map and obstacle photos are cloud-only features. | No workaround; local mode cannot stream map data. |
 | 6 | **Model variant gaps.** Newer SKUs (e.g., `r2587a`) may not be in the current stable release. | Install from the `dev` branch or check `Tasshack/dreame-vacuum` supported devices list. |
 | 7 | **Map parse errors on some firmware.** Certain firmware versions cause `IndexError` during obstacle map decode. | Update device firmware via the MOVA app; report the specific firmware version in an issue. |
+| 8 | **Maps not rendered for MOVA vacuums yet.** The bundled per-model AES IV table (`DEVICE_KEY` blob in `dreame/const.py`) contains no entries for the MOVA P50 / V / Z / S vacuum families, so the encrypted map frames cannot be decrypted client-side. All other features (start/stop/dock, suction selection, sensors, consumables, schedule, DND, services, etc.) work via cloud mode. | Open a tracking issue once an AES IV captured from a real-device handshake is available so it can be added to the key blob. |
+| 9 | **Generic capabilities for MOVA vacuums.** The bundled `DREAME_MODEL_CAPABILITIES` blob does not yet list MOVA vacuum model codes (`r2475a`, `r9416d`, `r2587a`, ...). After this PR, the lookup succeeds without raising, but capability flags that are governed *only* by the blob (e.g., `cleaning_route`, `gen5`, `lensbrush`, `new_state`) default to `False`. Anything backed by a property-presence check still works. | None needed for basic control; long-term, add per-model entries to the blob as they are reverse-engineered. |
+
+---
+
+## Configuration & Model Recognition
+
+The `model_utils` helper module (`custom_components/dreame_mower/model_utils.py`)
+centralises model-string handling so it can be unit-tested without importing
+Home Assistant:
+
+| Helper | Purpose |
+|--------|---------|
+| `is_supported_model(model)` | Returns `True` for any model whose MIoT string starts with `dreame.mower.`, `mova.mower.`, `dreame.vacuum.`, or `mova.vacuum.`. Used by `config_flow` to gate the device picker. |
+| `normalize_capability_model(model)` | Strips vendor/kind segments (`dreame.`, `mova.`, `mower.`, `vacuum.`, `xiaomi.`) so the bare model code can be looked up in the `DREAME_MODEL_CAPABILITIES` blob. Used by `DreameMowerDeviceCapability.refresh()`. |
+| `lookup_model_display_name(model)` | Returns a friendly display name for known SKUs (including the MOVA P50 Pro Ultra family: `r2475a`/`h`/`t`, `r9416d`, `r2587a`); returns `None` for anything else so callers fall back to the raw model string instead of `KeyError`-ing. |
 
 ---
 
