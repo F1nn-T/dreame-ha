@@ -9,6 +9,8 @@ from enum import IntEnum, Enum
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from ..model_utils import normalize_capability_model
+
 
 SEGMENT_TYPE_CODE_TO_NAME: Final = {
     0: "Zone",
@@ -1270,8 +1272,10 @@ class DreameMowerDeviceCapability:
 
         model = ""
         if self._device.info and self._device.info.model:
-            model = self._device.info.model.replace("mower.", "").replace(
-                "dreame.", "").replace("xiaomi.", "")
+            # Normalises e.g. ``mova.vacuum.r2475a`` -> ``r2475a`` so the
+            # bare model code can be looked up in the bundled
+            # DREAME_MODEL_CAPABILITIES blob. See ``model_utils``.
+            model = normalize_capability_model(self._device.info.model)
             device_capability = device_capabilities.get(model)
             while device_capability and isinstance(device_capability, str):
                 device_capability = device_capabilities.get(device_capability)
